@@ -1,0 +1,35 @@
+valuation-explainer/
+├── backend/                          # FastAPI 服务
+│   ├── main.py                       # 主入口 (FastAPI app)
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── routes_explain.py         # 定义 /explain API
+│   │   └── routes_healthcheck.py
+│   ├── core/
+│   │   ├── config.py                 # 环境变量、设置
+│   │   ├── llm_client.py             # 调用 LLM（如 OpenAI / Ollama）
+│   │   └── feature_analysis.py       # 分析因子变化逻辑
+│   ├── models/
+│   │   ├── valuation_input.py        # Pydantic 模型（请求参数）
+│   │   └── valuation_output.py       # Pydantic 模型（响应结构）
+│   ├── tests/
+│   │   └── test_api.py
+│   └── requirements.txt
+│
+├── frontend/                         # Streamlit 前端
+│   ├── app.py                        # Streamlit 主入口
+│   ├── components/
+│   │   ├── input_form.py             # 输入表单组件
+│   │   └── explanation_display.py    # 输出展示
+│   ├── utils/
+│   │   └── api_client.py             # 调用 FastAPI 的 HTTP 客户端
+│   ├── pages/                        # 可选：多页面结构
+│   └── requirements.txt
+│
+├── data/
+│   ├── sample_input.csv
+│   └── example_output.json
+│
+├── .env                              # 环境变量 (API Key 等)
+├── README.md
+└── docker-compose.yml                # 可选：容器化部署
