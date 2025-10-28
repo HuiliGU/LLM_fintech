@@ -24,10 +24,11 @@ class QwenV3():
             stream=True
         )
         for chunk in completion:
-            if "choices" in chunk:
-                delta = chunk["choices"][0]["delta"]
-                if "content" in delta and delta["content"]:
-                    yield delta["content"]
-            time.sleep(0.01)  
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                print(delta.content) 
+                yield delta.content 
+            time.sleep(0.01)
+
         yield "[[END]]"
     

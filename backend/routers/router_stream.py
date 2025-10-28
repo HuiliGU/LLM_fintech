@@ -9,8 +9,16 @@ chat_router = APIRouter()
 async def chat_stream(request: Request):
     data = await request.json()
     user_message = data.get("message", "")
+    print("用户输入：", user_message)
+
     qwen_agent = llm_client.QwenV3()
-    return StreamingResponse(qwen_agent.send_message(user_message), media_type="text/plain")
+
+    def generate():
+        for chunk in qwen_agent.send_message(user_message):
+            yield chunk  
+        yield "[[END]]"
+
+    return StreamingResponse(generate(), media_type="text/plain")
 
     
 
