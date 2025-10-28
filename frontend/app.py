@@ -1,48 +1,31 @@
 import streamlit as st
-import websocket
-import threading
+import requests
 
-st.set_page_config(page_title="Chat Demo", page_icon="💬")
-st.title("💬 FastAPI + Streamlit 聊天 Demo")
+st.set_page_config(page_title="AI Chat Demo")
 
-# 初始化状态
+st.write("This is an AI chatbot based on **Qwen3-30B-A3B-Thinking-2507**")
+
 if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+    st.session_state.messages = []
 
-if "ws" not in st.session_state:
-    try:
-        ws = websocket.WebSocket()
-        ws.connect("ws://localhost:8000/chat/ws")
-        st.session_state["ws"] = ws
-    except Exception as e:
-        st.error(f"WebSocket连接失败: {e}")
-        st.stop()
-
-def stream_reply(user_text: str):
-    """发送消息并实时接收WebSocket流式回复"""
-    ws = st.session_state["ws"]
-    ws.send(user_text)
-    reply = ""
-    while True:
-        chunk = ws.recv()
-        if chunk == "[[END]]":
-            break
-        reply += chunk
-        st.session_state["messages"][-1]["content"] = reply
-        st.experimental_rerun()
-
-# 输入框
-user_input = st.chat_input("输入你的消息...")
+user_input = st.chat_input("Ask anything")
 
 if user_input:
-    # 添加用户消息
-    st.session_state["messages"].append({"role": "user", "content": user_input})
-    # 预留一条空消息（assistant）
-    st.session_state["messages"].append({"role": "assistant", "content": ""})
-    # 新线程异步接收回复
-    threading.Thread(target=stream_reply, args=(user_input,)).start()
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    st.session_state.messages.append({"role": "assistant", "content": ""})
+    placeholder = st.empty()
 
-# 渲染消息历史
-for msg in st.session_state["messages"]:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+    # 调用 FastAPI 流式接口
+    response = requests.post("http://127.0.0.1:8000/chat/stream", json={"message": user_input}, stream=True)
+
+    for chunk in response.iter_content(chunk_size=None, decode_unicode=True):
+        if chunk == "[[END]]":
+            break
+        st.session_state.messages[-1]["content"] += chunk
+        # 刷新 UI
+        with placeholder.container():
+            for msg in st.session_state.messages:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+
+

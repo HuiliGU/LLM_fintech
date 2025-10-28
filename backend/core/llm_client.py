@@ -1,6 +1,8 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from fastapi.responses import StreamingResponse
+import time
 
 load_dotenv()
 
@@ -21,17 +23,11 @@ class QwenV3():
             ],
             stream=True
         )
-        return completion
-
-def main():
-    qwen_agent = QwenV3()
-    content = "what is the capital of France"
-    stream = qwen_agent.send_message(content)
-    for chunk in stream:
-        reply = chunk.choices[0].delta.content
-        if reply:
-            print(reply, end="")
+        for chunk in completion:
+            if "choices" in chunk:
+                delta = chunk["choices"][0]["delta"]
+                if "content" in delta and delta["content"]:
+                    yield delta["content"]
+            time.sleep(0.01)  
+        yield "[[END]]"
     
-
-if __name__ == "__main__":
-    main()
