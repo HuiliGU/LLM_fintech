@@ -26,7 +26,6 @@ class QwenV3():
         for chunk in completion:
             delta = chunk.choices[0].delta
             if delta and delta.content:
-                print(delta.content) 
                 yield delta.content 
             time.sleep(0.01)
 
