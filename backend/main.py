@@ -2,9 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routers.router_stream import chat_router
 
-app = FastAPI(title="聊天应用（模块化 Router）")
+app = FastAPI(title="AI Agent routers")
 
-# 跨域设置
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,5 +12,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 挂载路由
-app.include_router(chat_router, prefix="/chat", tags=["stream"])
+app.include_router(chat_router, prefix="/chat", tags=["text", "upload_file"])
