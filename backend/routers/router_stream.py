@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, File, UploadFile
+from fastapi import APIRouter, Request, File, UploadFile, Form
 import pandas as pd
 from backend.core import llm_client
 from fastapi.responses import StreamingResponse
-import os, io
+import io, os, base64
 from collections import defaultdict
+from PIL import Image
 
 
 chat_router = APIRouter()
@@ -34,31 +35,35 @@ async def chat_in_text(request: Request):
 
 
 @chat_router.post("/upload_file")
-async def chat_with_file(request: Request):
-    """
-    Endpoint to handle both CSV and Excel file uploads, 
-    read them into pandas DataFrame, 
-    and stream a generated response based on the data.
-    """
-    # Get form data from the request
-    form = await request.form()
-    uploaded_file = form.get("file")
-    user_id = form.get("user_id", "anonymous")
-    chat_history = chat_historys[user_id]
+async def upload_file(file: UploadFile = File(...), user_id: str = Form("anonymous")):
+    ext = os.path.splitext(file.filename)[1].lower()
+    msg_type = ""
+    data = None
 
-    filename = uploaded_file.filename
-    ext = os.path.splitext(filename)[1].lower()
+    if ext in [".csv", ".txt", ".xls", ".xlsx"]:
+        msg_type = "Dataframe"
+        if ext in [".csv", ".txt"]:
+            df = pd.read_csv(file.file)
+        else:  
+            df = pd.read_excel(file.file)
+        
+        df = df.replace([float("inf"), float("-inf")], None) 
+        df = df.fillna(value=0)
+        data = df.head(10).to_dict(orient="records")
 
-    # Read content safely
-    content = await uploaded_file.read()
-    if ext in [".txt", ".csv"]:
-        df = pd.read_csv(io.BytesIO(content))
-    elif ext in [".xls", ".xlsx"]:
-        df = pd.read_excel(io.BytesIO(content))
+    elif ext in [".jpg", ".jpeg", ".png"]:
+        # Image file -> convert to base64 for frontend display
+        msg_type = "Image"
+        img = Image.open(file.file)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        data = base64.b64encode(buf.getvalue()).decode("utf-8")
+
     else:
-        return {"error": "Unsupported file type"}
-    
-    message = f"Answer questions based on data in {df.head(5).to_dict()}"
-    chat_history.append({"role": "user", "content": message})
+        # Unsupported file type
+        msg_type = "Error"
+        data = "Unsupported file type. Please upload CSV, Excel, or Image."
 
-    return None
+    return {"msg_type": msg_type, "data": data}
+
+

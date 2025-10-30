@@ -1,4 +1,5 @@
 import streamlit as st
+import io, base64
 import requests
 from PIL import Image
 import pandas as pd
@@ -41,42 +42,47 @@ def handle_file_upload(file_obj):
     with st.chat_message("assistant"):
         placeholder = st.empty()
 
-        try:
-            # --- Tabular files ---
-            if file_obj.type in ["text/csv", "text/plain"]:
-                df = pd.read_csv(file_obj).head(5)
-                msg_type = "Dataframe"
-            elif file_obj.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                df = pd.read_excel(file_obj).head(5)
-                msg_type = "Dataframe"
-            # --- Images ---
-            elif file_obj.type in ["image/jpeg", "image/jpg", "image/png"]:
-                img = Image.open(file_obj)
-                msg_type, df = "Image", img
-            else:
-                raise TypeError("Unsupported file type. Please upload csv, txt, xlsx, png, jpg, jpeg.")
+    msg_type = ""
+    data = None
+    response = None
 
-            # --- Display + Save to session ---
+    try:
+        response = requests.post(
+            "http://127.0.0.1:8000/chat/upload_file",
+            files={"file": (file_obj.name, file_obj, file_obj.type)},
+            timeout=30,
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            msg_type = result["msg_type"]
+            data = result["data"]
+
             if msg_type == "Dataframe":
-                placeholder.dataframe(df)
+                data = pd.DataFrame(data)
+                placeholder.dataframe(data)
+
             elif msg_type == "Image":
-                placeholder.image(df, caption=f"Uploaded image: {file_obj.name}")
+                data = io.BytesIO(base64.b64decode(data))
+                placeholder.image(data)
 
-            st.session_state.messages[-1].update({"type": msg_type, "content": df})
+            else:
+                placeholder.markdown(f"❌ Unsupported type: {msg_type}")
 
-            # --- Send to backend (non-blocking) ---
-            try:
-                requests.post(
-                    "http://127.0.0.1:8000/chat/upload_file",
-                    files={"file": (file_obj.name, file_obj, file_obj.type)},
-                    timeout=10,
-                )
-            except Exception as e:
-                st.warning(f"⚠️ Backend upload failed: {e}")
+            # Save to chat history
+            st.session_state.messages[-1].update({"type": msg_type, "content": data})
 
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
-            st.session_state.messages[-1]["content"] = f"Error occurred: {e}"
+        else:
+            err_msg = response.json().get("detail", "Unknown error")
+            st.error(f"❌ Upload failed with {response.status_code}: {err_msg}")
+
+    except Exception as e:
+        if response is not None:
+            err_msg = response.text
+            st.error(f"❌ Upload failed ({response.status_code}): {err_msg}")
+        else:
+            st.error(f"❌ Request failed: {e}")
+
 
 
 def handle_user_message(user_text):
@@ -117,7 +123,8 @@ if uploaded_files:
     for f in uploaded_files:
         if f.name not in st.session_state.displayed_files:
             st.session_state.displayed_files.add(f.name)
-            handle_file_upload(f)
+            with st.spinner("Uploading and processing file..."):
+                handle_file_upload(f)
 
 # ------------------ Chat Input ------------------
 user_input = st.chat_input("💬 Ask anything")
