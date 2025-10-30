@@ -20,7 +20,8 @@ class codeGenerator:
             if chunk == "[[END]]":
                 break
             codes += chunk
-        print(codes)
+        
+        codes = codes.replace("```python", "").replace("```", "")
         return codes
     
 

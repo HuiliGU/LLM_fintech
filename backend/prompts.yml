@@ -7,6 +7,17 @@ code_generator_prompt:
     Just return the code without any explanations.
     User request: {user_request}
     Input data: {input_data}
-  
   tags: [data_science, code_generation]
+  created_at: 2025-10-30
+
+code_fix_prompt:
+  id: data_agent_001
+  name: Code Generator Prompt
+  content: |
+    You are a programming assistant.
+    Given the following code and error message, provide a fixed version of the code.
+    Just return the fixed code without any explanations.
+    Code: {code}
+    Error message: {error_message}
+  tags: [data_science, code_fixing]
   created_at: 2025-10-30
